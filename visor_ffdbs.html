@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor FFDBS</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #ffffff;
+    color: #000000;
+    font-family: "MS Sans Serif", "Tahoma", "Segoe UI", Geneva, sans-serif;
+    font-size: 12px;
+  }
+  body { padding: 12px; }
+
+  .titlebar {
+    background: #000080;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .titlebar .app-icon { margin-right: 6px; }
+
+  .field {
+    border: 1px solid #808080;
+    border-top-color: #404040;
+    border-left-color: #404040;
+    background: #ece9d8;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .field-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #808080;
+    padding-bottom: 3px;
+  }
+
+  /* botones estilo Win98/2000: relieve con bordes claros/oscuros */
+  button {
+    font-family: inherit;
+    font-size: 12px;
+    background: #ece9d8;
+    border-top: 1px solid #ffffff;
+    border-left: 1px solid #ffffff;
+    border-right: 1px solid #404040;
+    border-bottom: 1px solid #404040;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+  button:active {
+    border-top: 1px solid #404040;
+    border-left: 1px solid #404040;
+    border-right: 1px solid #ffffff;
+    border-bottom: 1px solid #ffffff;
+  }
+  button:focus { outline: 1px dotted #000000; }
+
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  input[type="file"] { display: none; }
+
+  .dropzone {
+    border: 1px dashed #808080;
+    background: #ffffff;
+    padding: 14px;
+    text-align: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #444444;
+  }
+  .dropzone.drag { background: #eef2fb; border-color: #000080; }
+
+  .statusbar {
+    border: 1px solid #808080;
+    border-top-color: #404040;
+    border-left-color: #404040;
+    background: #ece9d8;
+    padding: 4px 8px;
+    font-size: 11px;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .statusbar.show { display: block; }
+  .statusbar.err { color: #800000; font-weight: bold; }
+  .statusbar.ok { color: #004000; }
+
+  .panel {
+    border: 1px solid #808080;
+    border-top-color: #404040;
+    border-left-color: #404040;
+    background: #ffffff;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .panel.show { display: block; }
+  .panel-head {
+    background: #000080;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 3px 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .panel-body { padding: 10px; }
+
+  .err-panel .panel-head { background: #800000; }
+  .err-list { margin: 0; padding-left: 18px; }
+  .err-list li { margin-bottom: 4px; color: #800000; }
+
+  table.meta-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  table.meta-table td {
+    padding: 3px 8px;
+    border-bottom: 1px solid #d4d0c8;
+    vertical-align: top;
+  }
+  table.meta-table td.k {
+    font-weight: bold;
+    width: 160px;
+    white-space: nowrap;
+  }
+  .mismatch { color: #800000; font-weight: bold; }
+  .match { color: #004000; }
+
+  .schema-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .schema-table th, .schema-table td {
+    border: 1px solid #808080;
+    padding: 4px 8px;
+    text-align: left;
+  }
+  .schema-table th {
+    background: #d4d0c8;
+    font-weight: bold;
+  }
+
+  .data-table-wrap { overflow-x: auto; }
+  table.data-table {
+    border-collapse: collapse;
+    width: 100%;
+    white-space: nowrap;
+  }
+  table.data-table th {
+    background: #d4d0c8;
+    border: 1px solid #808080;
+    padding: 4px 8px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+  }
+  table.data-table td {
+    border: 1px solid #d4d0c8;
+    padding: 3px 8px;
+  }
+  table.data-table tbody tr:nth-child(even) { background: #f5f5f0; }
+  table.data-table tbody tr.comment-row td {
+    color: #606060;
+    font-style: italic;
+    background: #eeeeee;
+  }
+  table.data-table tbody tr.corrupt-row td {
+    background: #fbdede;
+  }
+
+  .status-ok { color: #004000; font-weight: bold; }
+  .status-error { color: #800000; font-weight: bold; }
+  .status-other { color: #000000; }
+  .val-null { color: #606060; font-style: italic; }
+  .val-bool-t { font-weight: bold; }
+  .checksum-bad { color: #800000; font-weight: bold; }
+  .checksum-ok { color: #004000; }
+  .checksum-none { color: #808080; }
+
+  footer {
+    font-size: 11px;
+    color: #444444;
+    border-top: 1px solid #808080;
+    padding-top: 6px;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  @media (max-width: 620px) {
+    table.data-table thead { display: none; }
+    table.data-table, table.data-table tbody, table.data-table tr, table.data-table td {
+      display: block; width: 100%;
+    }
+    table.data-table td {
+      display: flex; justify-content: space-between; gap: 10px;
+    }
+    table.data-table td::before {
+      content: attr(data-label);
+      font-weight: bold;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="titlebar">
+    <span><span class="app-icon">🗄</span>Visor FFDBS — Flat File Data Base System</span>
+    <span id="verTag">sin archivo</span>
+  </div>
+
+  <div class="field">
+    <div class="field-title">Abrir archivo</div>
+    <div class="toolbar">
+      <button id="btnLoad">Examinar...</button>
+      <button id="btnDemo">Ejemplo: temperatura</button>
+      <button id="btnDemo2">Ejemplo: sísmico (checksum dañado)</button>
+      <input type="file" id="fileInput" accept=".ffdbs,.txt">
+    </div>
+    <div class="dropzone" id="drop">
+      Arrastre aquí un archivo .ffdbs, o péguelo directamente (Ctrl+V) sobre esta página.
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusLine"></div>
+
+  <div class="panel err-panel" id="errPanel">
+    <div class="panel-head"><span>Errores de validación</span></div>
+    <div class="panel-body">
+      <ul class="err-list" id="errList"></ul>
+    </div>
+  </div>
+
+  <div class="panel" id="metaPanel">
+    <div class="panel-head"><span>Meta</span></div>
+    <div class="panel-body">
+      <table class="meta-table" id="metaTable"></table>
+    </div>
+  </div>
+
+  <div class="panel" id="schemaPanel">
+    <div class="panel-head"><span>Schema</span></div>
+    <div class="panel-body">
+      <table class="schema-table">
+        <thead><tr><th>Columna</th><th>Tipo</th><th>Permite nulo</th></tr></thead>
+        <tbody id="schemaBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="dataPanel">
+    <div class="panel-head">
+      <span>Data</span>
+      <span id="dataCount"></span>
+    </div>
+    <div class="panel-body data-table-wrap">
+      <table class="data-table">
+        <thead><tr id="theadRow"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <span>Parser local — el archivo no se envía a ningún servidor.</span>
+    <span id="fileMetaFoot"></span>
+  </footer>
+
+<script>
+/* ---------- Parser FFDBS 1.0 ---------- */
+
+function crc32(str){
+  let table = crc32.table || (crc32.table = (function(){
+    let t = [];
+    for(let n=0;n<256;n++){
+      let c=n;
+      for(let k=0;k<8;k++) c = c & 1 ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+      t[n]=c;
+    }
+    return t;
+  })());
+  let crc = 0 ^ (-1);
+  for(let i=0;i<str.length;i++){
+    crc = (crc >>> 8) ^ table[(crc ^ str.charCodeAt(i)) & 0xFF];
+  }
+  return ((crc ^ (-1)) >>> 0).toString(16).padStart(8,'0');
+}
+
+function splitPipe(line){
+  let parts = [];
+  let cur = '';
+  for(let i=0;i<line.length;i++){
+    if(line[i] === '\\' && line[i+1] === '|'){
+      cur += '|'; i++; continue;
+    }
+    if(line[i] === '|'){
+      parts.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    cur += line[i];
+  }
+  parts.push(cur.trim());
+  return parts;
+}
+
+function parseFFDBS(raw){
+  const errors = [];
+  const lines = raw.replace(/\r\n/g,'\n').split('\n');
+  let idx = 0;
+
+  while(idx < lines.length && lines[idx].trim() === '') idx++;
+
+  const verLine = (lines[idx] || '').trim();
+  const verMatch = verLine.match(/^FFDBS\/(\d+\.\d+)$/);
+  if(!verMatch){
+    errors.push('La primera línea debe ser "FFDBS/<versión>". Encontrado: "' + verLine + '"');
+  }
+  const version = verMatch ? verMatch[1] : null;
+  idx++;
+
+  let section = null;
+  let meta = {};
+  let schema = [];
+  let dataRows = [];
+  let sawEnd = false;
+
+  for(; idx<lines.length; idx++){
+    const rawLine = lines[idx];
+    const line = rawLine.trim();
+    if(line === '') continue;
+
+    const secMatch = line.match(/^===\s*(\w+)\s*===$/);
+    if(secMatch){
+      const name = secMatch[1].toUpperCase();
+      if(name === 'END'){ sawEnd = true; section = null; continue; }
+      if(!['META','SCHEMA','DATA'].includes(name)){
+        errors.push('Sección desconocida: "' + name + '"');
+      }
+      section = name;
+      continue;
+    }
+
+    if(section === 'META'){
+      const m = line.match(/^([^:]+):\s*(.*)$/);
+      if(!m){ errors.push('Línea de META inválida (se esperaba "clave: valor"): "' + line + '"'); continue; }
+      meta[m[1].trim()] = m[2].trim();
+    }
+    else if(section === 'SCHEMA'){
+      const cols = splitPipe(line);
+      cols.forEach(c => {
+        const cm = c.match(/^([a-zA-Z0-9_]+):(int|float|str|bool|ts)(\?)?$/);
+        if(!cm){ errors.push('Columna de SCHEMA inválida: "' + c + '"'); return; }
+        schema.push({ name: cm[1], type: cm[2], nullable: !!cm[3] });
+      });
+    }
+    else if(section === 'DATA'){
+      if(rawLine.trim().startsWith('#')){
+        dataRows.push({ comment: rawLine.trim().slice(1).trim() });
+        continue;
+      }
+      let checksum = null;
+      let body = line;
+      const csMatch = line.match(/^(.*)::\s*([0-9a-fA-F]+)$/);
+      if(csMatch){ body = csMatch[1].trim(); checksum = csMatch[2].toLowerCase(); }
+
+      const vals = splitPipe(body);
+      if(schema.length && vals.length !== schema.length){
+        errors.push('Fila con ' + vals.length + ' valores, se esperaban ' + schema.length + ': "' + line + '"');
+      }
+      let checksumOk = null;
+      if(checksum){
+        checksumOk = (crc32(vals.join(' | ')) === checksum);
+      }
+      dataRows.push({ values: vals, checksum, checksumOk });
+    }
+    else{
+      errors.push('Línea fuera de cualquier sección: "' + line + '"');
+    }
+  }
+
+  if(!sawEnd) errors.push('Falta la línea de cierre "=== END ===".');
+
+  const declaredCount = meta['registros'] !== undefined ? parseInt(meta['registros'],10) : null;
+  const actualCount = dataRows.filter(r => !r.comment).length;
+  if(declaredCount !== null && declaredCount !== actualCount){
+    errors.push('META declara "registros: ' + declaredCount + '" pero se encontraron ' + actualCount + ' filas de datos.');
+  }
+
+  dataRows.forEach((row, i) => {
+    if(row.comment) return;
+    row.values.forEach((v, ci) => {
+      const col = schema[ci];
+      if(!col) return;
+      if(v === '~'){
+        if(!col.nullable) errors.push('Fila ' + (i+1) + ', columna "' + col.name + '": valor nulo (~) en columna no anulable.');
+        return;
+      }
+      if(col.type === 'int' && !/^-?\d+$/.test(v)){
+        errors.push('Fila ' + (i+1) + ', columna "' + col.name + '": "' + v + '" no es int.');
+      }
+      if((col.type === 'float' || col.type === 'ts') && !/^-?\d+(\.\d+)?$/.test(v)){
+        errors.push('Fila ' + (i+1) + ', columna "' + col.name + '": "' + v + '" no es numérico.');
+      }
+      if(col.type === 'bool' && v !== 'T' && v !== 'F'){
+        errors.push('Fila ' + (i+1) + ', columna "' + col.name + '": "' + v + '" no es T/F.');
+      }
+    });
+  });
+
+  return { version, meta, schema, dataRows, errors, declaredCount, actualCount };
+}
+
+/* ---------- Render ---------- */
+
+function statusClassForValue(colName, val){
+  if(colName.toLowerCase() === 'status'){
+    if(val.toUpperCase() === 'OK') return 'status-ok';
+    if(val.toUpperCase() === 'ERROR') return 'status-error';
+    return 'status-other';
+  }
+  return null;
+}
+
+function renderValue(col, val){
+  if(val === '~') return '<span class="val-null">(nulo)</span>';
+  if(col.type === 'bool') return '<span class="' + (val==='T'?'val-bool-t':'') + '">' + (val==='T'?'Verdadero':'Falso') + '</span>';
+  const cls = statusClassForValue(col.name, val);
+  if(cls) return '<span class="' + cls + '">' + val + '</span>';
+  return val;
+}
+
+function render(parsed){
+  document.getElementById('verTag').textContent = parsed.version ? ('FFDBS/' + parsed.version) : 'versión desconocida';
+
+  const errPanel = document.getElementById('errPanel');
+  const errList = document.getElementById('errList');
+  errList.innerHTML = '';
+  if(parsed.errors.length){
+    errPanel.classList.add('show');
+    parsed.errors.forEach(e => {
+      const li = document.createElement('li');
+      li.textContent = e;
+      errList.appendChild(li);
+    });
+  } else {
+    errPanel.classList.remove('show');
+  }
+
+  const metaTable = document.getElementById('metaTable');
+  metaTable.innerHTML = '';
+  Object.entries(parsed.meta).forEach(([k,v]) => {
+    const tr = document.createElement('tr');
+    let extra = '';
+    let cls = '';
+    if(k === 'registros'){
+      const match = parseInt(v,10) === parsed.actualCount;
+      cls = match ? 'match' : 'mismatch';
+      extra = match ? ' (coincide con el conteo real)' : ' (real: ' + parsed.actualCount + ' — no coincide)';
+    }
+    tr.innerHTML = '<td class="k">' + k + '</td><td class="' + cls + '">' + v + extra + '</td>';
+    metaTable.appendChild(tr);
+  });
+  document.getElementById('metaPanel').classList.toggle('show', Object.keys(parsed.meta).length > 0);
+
+  const schemaBody = document.getElementById('schemaBody');
+  schemaBody.innerHTML = '';
+  parsed.schema.forEach(col => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + col.name + '</td><td>' + col.type + '</td><td>' + (col.nullable ? 'Sí' : 'No') + '</td>';
+    schemaBody.appendChild(tr);
+  });
+  document.getElementById('schemaPanel').classList.toggle('show', parsed.schema.length > 0);
+
+  const thead = document.getElementById('theadRow');
+  thead.innerHTML = '';
+  parsed.schema.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col.name;
+    thead.appendChild(th);
+  });
+  const thCk = document.createElement('th');
+  thCk.textContent = 'checksum';
+  thead.appendChild(thCk);
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  parsed.dataRows.forEach(row => {
+    const tr = document.createElement('tr');
+    if(row.comment){
+      tr.className = 'comment-row';
+      const td = document.createElement('td');
+      td.colSpan = parsed.schema.length + 1;
+      td.textContent = '# ' + row.comment;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    if(row.checksumOk === false) tr.classList.add('corrupt-row');
+    row.values.forEach((v, i) => {
+      const col = parsed.schema[i] || {name:'col'+i, type:'str'};
+      const td = document.createElement('td');
+      td.setAttribute('data-label', col.name);
+      td.innerHTML = renderValue(col, v);
+      tr.appendChild(td);
+    });
+    const tdCk = document.createElement('td');
+    tdCk.setAttribute('data-label', 'checksum');
+    if(row.checksum){
+      tdCk.innerHTML = '<span class="' + (row.checksumOk===false ? 'checksum-bad' : 'checksum-ok') + '">' + row.checksum + (row.checksumOk===false ? ' — dañado' : ' — correcto') + '</span>';
+    } else {
+      tdCk.innerHTML = '<span class="checksum-none">—</span>';
+    }
+    tr.appendChild(tdCk);
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('dataPanel').classList.toggle('show', parsed.dataRows.length > 0);
+  document.getElementById('dataCount').textContent = parsed.actualCount + ' registro(s)';
+
+  document.getElementById('fileMetaFoot').textContent = parsed.meta['dataset'] ? ('dataset: ' + parsed.meta['dataset']) : '';
+}
+
+function loadText(text, label){
+  const statusLine = document.getElementById('statusLine');
+  try{
+    const parsed = parseFFDBS(text);
+    render(parsed);
+    statusLine.className = 'statusbar show ' + (parsed.errors.length ? 'err' : 'ok');
+    statusLine.textContent = (parsed.errors.length ? (parsed.errors.length + ' error(es) de validación — ') : 'Archivo válido — ') + (label || '');
+  } catch(e){
+    statusLine.className = 'statusbar show err';
+    statusLine.textContent = 'No se pudo leer el archivo: ' + e.message;
+  }
+}
+
+const DEMO = `FFDBS/1.0
+=== META ===
+dataset: Mediciones_Temperatura_Marzo_2026
+autor: Lab_Sismologia_X
+creado: 1774900000
+encoding: UTF-8
+compresion: ninguna
+clave_primaria: id
+registros: 3
+=== SCHEMA ===
+id:int | timestamp:ts | sensor_id:str | reading:float | status:str
+=== DATA ===
+1 | 1774900010.5 | SNS-01 | 23.4 | OK
+2 | 1774900020.1 | SNS-02 | 21.8 | OK
+3 | 1774900030.8 | SNS-01 | -99.0 | ERROR
+=== END ===`;
+
+const DEMO2 = `FFDBS/1.0
+=== META ===
+dataset: Eventos_Sismicos_Estacion_Norte
+autor: Lab_Sismologia_X
+creado: 1774903600
+encoding: UTF-8
+compresion: ninguna
+clave_primaria: evento_id
+registros: 5
+region: Falla_Norte_Sector_3
+=== SCHEMA ===
+evento_id:int | timestamp:ts | magnitud:float? | profundidad_km:float | estacion:str | validado:bool
+=== DATA ===
+# Ventana de mantenimiento 08:00-08:15 — sensor secundario offline
+1 | 1774903601.2 | 2.3 | 10.5 | EST-NORTE-01 | T :: 6b01dddb
+2 | 1774903720.9 | 1.8 | 8.2 | EST-NORTE-01 | T :: dff836c4
+3 | 1774903890.4 | ~ | 12.0 | EST-NORTE-02 | F :: b44d4799
+# Evento 4 pendiente de revisión manual — checksum alterado a propósito
+4 | 1774904015.7 | 3.1 | 15.8 | EST-NORTE-01 | F :: 00000000
+5 | 1774904200.3 | 1.2 | 6.9 | EST-NORTE-02 | T :: e26b0e08
+=== END ===`;
+
+document.getElementById('btnDemo').addEventListener('click', () => loadText(DEMO, 'ejemplo de demostración'));
+document.getElementById('btnDemo2').addEventListener('click', () => loadText(DEMO2, 'ejemplo sísmico'));
+document.getElementById('btnLoad').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadText(reader.result, f.name);
+  reader.readAsText(f);
+});
+
+const drop = document.getElementById('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadText(reader.result, f.name);
+  reader.readAsText(f);
+});
+document.addEventListener('paste', e => {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(text && text.trim().startsWith('FFDBS/')) loadText(text, 'pegado desde portapapeles');
+});
+</script>
+</body>
+</html>
