@@ -1,0 +1,16 @@
+FFDBS/1.0
+=== META ===
+dataset: Mediciones_Temperatura_Marzo_2026
+autor: Lab_Sismologia_X
+creado: 1774900000
+encoding: UTF-8
+compresion: ninguna
+clave_primaria: id
+registros: 3
+=== SCHEMA ===
+id:int | timestamp:ts | sensor_id:str | reading:float | status:str
+=== DATA ===
+1 | 1774900010.5 | SNS-01 | 23.4 | OK
+2 | 1774900020.1 | SNS-02 | 21.8 | OK
+3 | 1774900030.8 | SNS-01 | -99.0 | ERROR
+=== END ===

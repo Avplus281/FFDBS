@@ -1,0 +1,22 @@
+FFDBS/1.0
+=== META ===
+dataset: Eventos_Sismicos_Estacion_Norte
+autor: Lab_Sismologia_X
+creado: 1774903600
+encoding: UTF-8
+compresion: ninguna
+clave_primaria: evento_id
+registros: 5
+region: Falla_Norte_Sector_3
+=== SCHEMA ===
+evento_id:int | timestamp:ts | magnitud:float? | profundidad_km:float | estacion:str | validado:bool
+=== DATA ===
+# Ventana de mantenimiento 08:00-08:15 — sensor secundario offline
+1 | 1774903601.2 | 2.3 | 10.5 | EST-NORTE-01 | T :: 6b01dddb
+2 | 1774903720.9 | 1.8 | 8.2 | EST-NORTE-01 | T :: dff836c4
+3 | 1774903890.4 | ~ | 12.0 | EST-NORTE-02 | F :: b44d4799
+# Evento 4 pendiente de revisión manual por sismólogo de turno — checksum
+# deliberadamente alterado abajo para ilustrar detección de corrupción
+4 | 1774904015.7 | 3.1 | 15.8 | EST-NORTE-01 | F :: 00000000
+5 | 1774904200.3 | 1.2 | 6.9 | EST-NORTE-02 | T :: e26b0e08
+=== END ===
